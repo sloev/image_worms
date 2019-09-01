@@ -1,8 +1,10 @@
 import time
+add_library('video')
+
 
 class Path:
 
-    def __init__(self, lifespan, max_width, max_height, source_image):
+    def __init__(self, lifespan, max_width, max_height, source_image=None):
         self.lifespan = lifespan
         self.max_width = max_width
         self.max_height = max_height
@@ -16,7 +18,7 @@ class Path:
     def get_next_point(self, last_point):
         raise NotImplemented()
 
-    def next(self):
+    def render(self, source_image=None):
         if not self.lifespan:
             return None
         self.last_point = self.get_next_point(self.last_point)
@@ -28,7 +30,7 @@ class Path:
         self.pg.strokeWeight(30)
         self.pg.point(x, y)
         self.pg.endDraw()
-        img_tmp = self.source_image.copy()
+        img_tmp = (source_image or self.source_image).copy()
         img_tmp.mask(self.pg)#, 0, 0, self.max_width, self.max_height,0,0,self.max_width, self.max_height, MULTIPLY)
         return img_tmp
 
@@ -55,34 +57,33 @@ class NoisyPath(Path):
 
 
 def setup():
-    global img, running_paths, source_images, path_classes
-    source_images = [
-        loadImage("1.jpg"),
-        loadImage("2.jpg"),
-        loadImage("3.jpg"),
-        loadImage("4.jpg"),
-        loadImage("5.jpg")
-    ]
+    global img, running_paths, path_classes, video
+    
     path_classes = [
         NoisyPath
     ]
     size(1024, 768)
     running_paths = []
     background(0)
+    video = Capture(this, 1024, 768);
+  
+    video.start(); 
 
 
 def draw():
-    global img, running_paths, source_images, path_classes
+    global img, running_paths, path_classes, video
     running_paths = [path for path in running_paths if path]
     for i in range(2-len(running_paths)):
         path_index = int(random(len(path_classes)-1))
         path_class = path_classes[path_index]
         lifespan = int(random(100, 300))
-        img_index = int(random(len(source_images)-1))
-        img = source_images[img_index]
-        print("added", lifespan, path_index, img_index)
-        running_paths.append(path_class(lifespan, width, height, img))
+     
+        print("added", lifespan, path_index)
+        running_paths.append(path_class(lifespan, width, height))
     
     for path in running_paths:
-        img = next(path)
+        video.read();
+        video.loadPixels();
+        img = path.render(video)
+ 
         image(img, 0,0)#, 0, 0, width, height,0,0, width,  height, BLEND)
