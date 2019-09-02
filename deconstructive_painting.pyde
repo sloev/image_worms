@@ -2,7 +2,7 @@ import time
 
 class Path:
 
-    def __init__(self, lifespan, max_width, max_height, source_image):
+    def __init__(self, lifespan, max_width, max_height, source_image, difference):
         self.lifespan = lifespan
         self.max_width = max_width
         self.max_height = max_height
@@ -14,12 +14,13 @@ class Path:
         self.last_point = None
         self.it = 0
         self.factor = lifespan/10.0
+        self.difference = difference
 
 
     def get_next_point(self, last_point):
         raise NotImplemented()
 
-    def next(self):
+    def render(self):
         if not self.lifespan:
             return None
         self.last_point = self.get_next_point(self.last_point)
@@ -31,7 +32,6 @@ class Path:
         sub_stroke = (
             self.factor - min(self.lifespan, self.factor)) * (255 / self.factor)
         s = add_stroke - sub_stroke
-        print(s, add_stroke, sub_stroke)
         self.pg.stroke(s)
         self.pg.strokeWeight(30)
         self.pg.point(x, y)
@@ -40,7 +40,10 @@ class Path:
         # , 0, 0, self.max_width, self.max_height,0,0,self.max_width, self.max_height, MULTIPLY)
         img_tmp.mask(self.pg)
         self.it += 1
-        return img_tmp
+        if self.difference:
+            blend(img_tmp, 0, 0, self.max_width, self.max_height,0,0, self.max_width,  self.max_height, DIFFERENCE)
+        else:
+            image(img_tmp, 0, 0)
 
     def __nonzero__(self):
         return 1 if self.lifespan else 0
@@ -80,7 +83,7 @@ def setup():
     size(1024, 768)
     running_paths = []
     background(0)
-    delete_all = time.time() + 10
+    delete_all = time.time() + 100
 
 
 def draw():
@@ -93,12 +96,12 @@ def draw():
         img_index = int(random(len(source_images) - 1))
         img = source_images[img_index]
         #print("added", lifespan, path_index, img_index)
-        running_paths.append(path_class(lifespan, width, height, img))
+        difference = random(0,10) > 8
+        running_paths.append(path_class(lifespan, width, height, img, difference=difference))
     if delete_all < time.time():
         fill(0, 0, 0, 30)
         rect(-2, -2, width + 4, height + 4)
         if delete_all + 5 < time.time():
             delete_all = time.time() + random(50, 400)
     for path in running_paths:
-        img = next(path)
-        blend(img, 0, 0, width, height,0,0, width,  height, DIFFERENCE)
+        path.render()
