@@ -12,6 +12,9 @@ class Path:
         self.pg.endDraw()
         self.source_image = source_image
         self.last_point = None
+        self.it = 0
+        self.factor = lifespan/10.0
+
 
     def get_next_point(self, last_point):
         raise NotImplemented()
@@ -24,12 +27,19 @@ class Path:
         self.pg.beginDraw()
         self.pg.background(0)
         x, y, angle = self.last_point
-        self.pg.stroke(255)
+        add_stroke = min(self.it, self.factor) * (255 / self.factor)
+        sub_stroke = (
+            self.factor - min(self.lifespan, self.factor)) * (255 / self.factor)
+        s = add_stroke - sub_stroke
+        print(s, add_stroke, sub_stroke)
+        self.pg.stroke(s)
         self.pg.strokeWeight(30)
         self.pg.point(x, y)
         self.pg.endDraw()
         img_tmp = self.source_image.copy()
-        img_tmp.mask(self.pg)#, 0, 0, self.max_width, self.max_height,0,0,self.max_width, self.max_height, MULTIPLY)
+        # , 0, 0, self.max_width, self.max_height,0,0,self.max_width, self.max_height, MULTIPLY)
+        img_tmp.mask(self.pg)
+        self.it += 1
         return img_tmp
 
     def __nonzero__(self):
@@ -49,13 +59,14 @@ class NoisyPath(Path):
             next_y = y + (sin(radians(angle)))
             if next_x > self.max_width or next_x < 0 or next_y > self.max_height or next_y < 0:
                 angle -= 180
-            x += cos(radians(angle)) * 10
-            y += sin(radians(angle)) * 10
+            x += cos(radians(angle)) * 5
+            y += sin(radians(angle)) * 5
             return x, y, angle
 
 
 def setup():
-    global img, running_paths, source_images, path_classes
+    global img, running_paths, source_images, path_classes, delete_all
+    frameRate(60)
     source_images = [
         loadImage("1.jpg"),
         loadImage("2.jpg"),
@@ -69,20 +80,25 @@ def setup():
     size(1024, 768)
     running_paths = []
     background(0)
+    delete_all = time.time() + 10
 
 
 def draw():
-    global img, running_paths, source_images, path_classes
+    global img, running_paths, source_images, path_classes, delete_all
     running_paths = [path for path in running_paths if path]
-    for i in range(2-len(running_paths)):
-        path_index = int(random(len(path_classes)-1))
+    for i in range(1 - len(running_paths)):
+        path_index = int(random(len(path_classes) - 1))
         path_class = path_classes[path_index]
-        lifespan = int(random(100, 300))
-        img_index = int(random(len(source_images)-1))
+        lifespan = int(random(100, 500))
+        img_index = int(random(len(source_images) - 1))
         img = source_images[img_index]
-        print("added", lifespan, path_index, img_index)
+        #print("added", lifespan, path_index, img_index)
         running_paths.append(path_class(lifespan, width, height, img))
-    
+    if delete_all < time.time():
+        fill(0, 0, 0, 30)
+        rect(-2, -2, width + 4, height + 4)
+        if delete_all + 5 < time.time():
+            delete_all = time.time() + random(50, 400)
     for path in running_paths:
         img = next(path)
-        image(img, 0,0)#, 0, 0, width, height,0,0, width,  height, BLEND)
+        blend(img, 0, 0, width, height,0,0, width,  height, DIFFERENCE)
